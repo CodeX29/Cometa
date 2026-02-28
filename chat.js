@@ -1,23 +1,21 @@
 // ==================== КОНФИГУРАЦИЯ JSONBIN ====================
-// ВАЖНО: ЗАМЕНИТЕ НА СВОИ РЕАЛЬНЫЕ ЗНАЧЕНИЯ!
 const CONFIG = {
     API_KEY: '$2a$10$gUv5gFLt94xN1CfT/zp2beY3Bhg4D.TG/3s7ecFFuLagUTSFaVOji',     // Вставьте сюда ваш ключ
     BIN_ID: '69a32dabd0ea881f40e277bb',        // Вставьте сюда ваш ID
     BASE_URL: 'https://api.jsonbin.io/v3'
 };
 
-// Кодируем ключ для безопасной передачи в URL
-const ENCODED_KEY = encodeURIComponent(CONFIG.API_KEY);
-
 // ==================== ГЛАВНЫЙ КЛАСС ЧАТА ====================
 class CometaChat {
     constructor() {
         this.currentUser = null;
         this.currentChat = null;
+        this.currentChatId = null;
         this.users = [];
         this.messages = {};
         this.chats = [];
         this.updateInterval = null;
+        this.lastMessageCount = {};
         this.init();
     }
 
@@ -29,22 +27,17 @@ class CometaChat {
         this.loadTheme();
     }
 
-    // Загрузка данных из JSONBin (упрощенная версия)
+    // Загрузка данных из JSONBin
     async loadData() {
         try {
             console.log('🔄 Загружаем данные...');
             
-            // Простой запрос без сложных заголовков
-            const url = `${CONFIG.BASE_URL}/b/${CONFIG.BIN_ID}/latest?meta=false`;
-            
-            const response = await fetch(url, {
+            const response = await fetch(`${CONFIG.BASE_URL}/b/${CONFIG.BIN_ID}/latest?meta=false`, {
                 method: 'GET',
                 headers: {
                     'X-Master-Key': CONFIG.API_KEY
                 }
             });
-            
-            console.log('📡 Статус ответа:', response.status);
             
             if (response.status === 404) {
                 console.log('📦 Bin не найден, создаем новый...');
@@ -57,7 +50,6 @@ class CometaChat {
             }
             
             const data = await response.json();
-            console.log('📦 Данные получены');
             
             // Инициализируем структуру
             this.users = data.users || [];
@@ -66,13 +58,19 @@ class CometaChat {
             
             console.log('✅ Данные загружены');
             console.log('👥 Пользователей:', this.users.length);
+            console.log('💬 Чатов:', this.chats.length);
+            console.log('📨 Сообщений по чатам:', Object.keys(this.messages).length);
+            
+            // После загрузки обновляем интерфейс
+            if (this.currentUser) {
+                this.loadUserChats();
+                if (this.currentChatId) {
+                    this.renderMessages(this.currentChatId);
+                }
+            }
             
         } catch (error) {
             console.error('❌ Ошибка загрузки:', error);
-            // Создаем пустую структуру
-            this.users = [];
-            this.chats = [];
-            this.messages = {};
         }
     }
 
@@ -96,18 +94,14 @@ class CometaChat {
                 const newBin = await response.json();
                 console.log('✅ Новый bin создан! ID:', newBin.metadata.id);
                 alert(`✅ Создан новый bin!\n\nID: ${newBin.metadata.id}\n\nСкопируйте его в файл chat.js`);
-                
                 CONFIG.BIN_ID = newBin.metadata.id;
-                this.users = [];
-                this.chats = [];
-                this.messages = {};
             }
         } catch (error) {
             console.error('❌ Ошибка создания bin:', error);
         }
     }
 
-    // Сохранение данных (упрощенная версия)
+    // Сохранение данных
     async saveData() {
         try {
             console.log('💾 Сохраняем данные...');
@@ -145,8 +139,9 @@ class CometaChat {
         const savedUser = localStorage.getItem('cometa-user');
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
+            console.log('👤 Текущий пользователь:', this.currentUser.username);
             
-            // Обновляем статус
+            // Обновляем статус пользователя
             const user = this.users.find(u => u.id === this.currentUser.id);
             if (user) {
                 user.status = 'online';
@@ -155,14 +150,16 @@ class CometaChat {
             }
             
             this.hideAuthModal();
+            this.updateUI();
             this.loadUserChats();
             this.startMessagePolling();
-            this.updateUI();
         }
     }
 
     // Регистрация
     async register(username, password) {
+        console.log('📝 Регистрация пользователя:', username);
+        
         // Проверяем существование
         if (this.users.find(u => u.username === username)) {
             this.showNotification('Пользователь уже существует', 'error');
@@ -171,14 +168,13 @@ class CometaChat {
 
         // Создаем пользователя
         const newUser = {
-            id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
             username: username,
             password: this.hashPassword(password),
             avatar: username.charAt(0).toUpperCase(),
             createdAt: new Date().toISOString(),
             lastSeen: new Date().toISOString(),
-            status: 'online',
-            chats: []
+            status: 'online'
         };
 
         this.users.push(newUser);
@@ -188,16 +184,19 @@ class CometaChat {
         localStorage.setItem('cometa-user', JSON.stringify(newUser));
         
         this.hideAuthModal();
+        this.updateUI();
         this.loadUserChats();
         this.startMessagePolling();
-        this.updateUI();
         
         this.showNotification('Регистрация успешна!', 'success');
+        console.log('✅ Пользователь зарегистрирован:', username);
         return true;
     }
 
     // Вход
     async login(username, password) {
+        console.log('🔑 Вход пользователя:', username);
+        
         const hashedPassword = this.hashPassword(password);
         const user = this.users.find(u => 
             u.username === username && 
@@ -217,9 +216,9 @@ class CometaChat {
         await this.saveData();
         
         this.hideAuthModal();
+        this.updateUI();
         this.loadUserChats();
         this.startMessagePolling();
-        this.updateUI();
         
         this.showNotification('Добро пожаловать!', 'success');
         return true;
@@ -237,6 +236,7 @@ class CometaChat {
         }
         
         this.currentUser = null;
+        this.currentChatId = null;
         localStorage.removeItem('cometa-user');
         clearInterval(this.updateInterval);
         window.location.reload();
@@ -249,13 +249,19 @@ class CometaChat {
 
     // ==================== ЧАТЫ ====================
 
+    // Загрузка чатов пользователя
     loadUserChats() {
         if (!this.currentUser) return;
+        
+        console.log('📋 Загружаем чаты для:', this.currentUser.username);
         
         const userChats = this.chats.filter(chat => 
             chat.participants && chat.participants.includes(this.currentUser.id)
         );
 
+        console.log('📊 Найдено чатов:', userChats.length);
+
+        // Сортируем по последнему сообщению
         userChats.sort((a, b) => {
             const aTime = this.getLastMessageTime(a.id);
             const bTime = this.getLastMessageTime(b.id);
@@ -265,16 +271,24 @@ class CometaChat {
         this.renderChatsList(userChats);
     }
 
+    // Получение времени последнего сообщения
     getLastMessageTime(chatId) {
         const chatMessages = this.messages[chatId] || [];
         if (chatMessages.length === 0) return 0;
         return new Date(chatMessages[chatMessages.length - 1].timestamp).getTime();
     }
 
+    // Создание нового чата
     async createChat(otherUserId) {
         const otherUser = this.users.find(u => u.id === otherUserId);
-        if (!otherUser) return;
+        if (!otherUser) {
+            console.error('❌ Пользователь не найден:', otherUserId);
+            return;
+        }
 
+        console.log('💬 Создаем чат между', this.currentUser.username, 'и', otherUser.username);
+
+        // Проверяем, существует ли уже чат
         const existingChat = this.chats.find(chat => 
             chat.participants && 
             chat.participants.includes(this.currentUser.id) && 
@@ -282,12 +296,15 @@ class CometaChat {
         );
 
         if (existingChat) {
+            console.log('✅ Чат уже существует, открываем');
             this.openChat(existingChat.id, otherUser);
+            closeModal('newChatModal');
             return;
         }
 
+        // Создаем новый чат
         const newChat = {
-            id: 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            id: 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
             participants: [this.currentUser.id, otherUserId],
             createdAt: new Date().toISOString(),
             lastMessage: 'Чат создан',
@@ -302,13 +319,19 @@ class CometaChat {
         
         await this.saveData();
         
+        console.log('✅ Чат создан, ID:', newChat.id);
+        
         this.openChat(newChat.id, otherUser);
         this.loadUserChats();
         
         closeModal('newChatModal');
     }
 
+    // Открыть чат
     openChat(chatId, otherUser) {
+        console.log('📨 Открываем чат с', otherUser.username);
+        
+        this.currentChatId = chatId;
         this.currentChat = {
             id: chatId,
             user: otherUser
@@ -328,15 +351,21 @@ class CometaChat {
         `;
 
         this.renderMessages(chatId);
+        
+        // На мобильных закрываем сайдбар
+        if (window.innerWidth <= 768) {
+            document.getElementById('sidebar').classList.remove('show');
+        }
     }
 
     // ==================== СООБЩЕНИЯ ====================
 
+    // Отправка сообщения
     async sendMessage(text) {
-        if (!this.currentChat || !text.trim()) return;
+        if (!this.currentChatId || !text.trim()) return;
 
         const message = {
-            id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
             senderId: this.currentUser.id,
             senderName: this.currentUser.username,
             text: text.trim(),
@@ -344,13 +373,15 @@ class CometaChat {
             read: false
         };
 
-        if (!this.messages[this.currentChat.id]) {
-            this.messages[this.currentChat.id] = [];
+        console.log('📤 Отправляем сообщение:', message.text, 'в чат', this.currentChatId);
+
+        if (!this.messages[this.currentChatId]) {
+            this.messages[this.currentChatId] = [];
         }
         
-        this.messages[this.currentChat.id].push(message);
+        this.messages[this.currentChatId].push(message);
 
-        const chat = this.chats.find(c => c.id === this.currentChat.id);
+        const chat = this.chats.find(c => c.id === this.currentChatId);
         if (chat) {
             chat.lastMessage = text.trim();
             chat.lastMessageTime = new Date().toISOString();
@@ -359,15 +390,19 @@ class CometaChat {
         const saved = await this.saveData();
         
         if (saved) {
-            this.renderMessages(this.currentChat.id);
+            console.log('✅ Сообщение сохранено');
+            this.renderMessages(this.currentChatId);
             this.loadUserChats();
             document.getElementById('messageInput').value = '';
         }
     }
 
+    // Рендер сообщений
     renderMessages(chatId) {
         const container = document.getElementById('messagesContainer');
         const messages = this.messages[chatId] || [];
+
+        console.log('📨 Рендерим сообщения для чата', chatId, ':', messages.length, 'сообщений');
 
         if (messages.length === 0) {
             container.innerHTML = `
@@ -412,6 +447,7 @@ class CometaChat {
         this.scrollToBottom();
     }
 
+    // Рендер списка чатов
     renderChatsList(chats) {
         const container = document.getElementById('chatsList');
 
@@ -433,17 +469,23 @@ class CometaChat {
         chats.forEach(chat => {
             const otherUserId = chat.participants.find(id => id !== this.currentUser.id);
             const otherUser = this.users.find(u => u.id === otherUserId);
-            if (!otherUser) return;
+            
+            if (!otherUser) {
+                console.warn('⚠️ Собеседник не найден для чата', chat.id);
+                return;
+            }
 
             const lastMessage = chat.lastMessage || 'Нет сообщений';
             const unreadCount = this.getUnreadCount(chat.id);
             const time = chat.lastMessageTime ? this.formatMessageTime(chat.lastMessageTime) : '';
 
-            const userJson = JSON.stringify(otherUser).replace(/"/g, '&quot;');
+            // Проверяем, есть ли непрочитанные сообщения от другого пользователя
+            const hasUnread = this.messages[chat.id] ? 
+                this.messages[chat.id].some(m => !m.read && m.senderId !== this.currentUser.id) : false;
 
             html += `
-                <div class="chat-item ${chat.id === this.currentChat?.id ? 'active' : ''}" 
-                     onclick='chatApp.openChat("${chat.id}", ${userJson})'>
+                <div class="chat-item ${chat.id === this.currentChatId ? 'active' : ''} ${hasUnread ? 'has-unread' : ''}" 
+                     onclick="chatApp.openChat('${chat.id}', ${JSON.stringify(otherUser).replace(/"/g, '&quot;')})">
                     <div class="chat-avatar">
                         ${otherUser.avatar || otherUser.username.charAt(0).toUpperCase()}
                         <span class="status-dot-mini ${otherUser.status === 'online' ? 'online' : ''}"></span>
@@ -463,6 +505,7 @@ class CometaChat {
         container.innerHTML = html;
     }
 
+    // Получение количества непрочитанных сообщений
     getUnreadCount(chatId) {
         const messages = this.messages[chatId] || [];
         return messages.filter(msg => 
@@ -470,6 +513,7 @@ class CometaChat {
         ).length;
     }
 
+    // Отметить сообщения как прочитанные
     markMessagesAsRead(chatId) {
         const messages = this.messages[chatId];
         if (messages) {
@@ -481,23 +525,34 @@ class CometaChat {
                 }
             });
             if (changed) {
+                console.log('📖 Отмечены как прочитанные в чате', chatId);
                 this.saveData();
             }
         }
     }
 
-    // ==================== ПОИСК ====================
+    // ==================== ПОИСК ПОЛЬЗОВАТЕЛЕЙ ====================
 
+    // Поиск пользователей
     searchUsers(query) {
-        if (!query) return [];
+        if (!query || query.length < 1) return [];
         
         query = query.toLowerCase();
-        return this.users.filter(user => 
-            user.id !== this.currentUser.id &&
-            user.username.toLowerCase().includes(query)
-        ).slice(0, 10);
+        console.log('🔍 Поиск пользователей по запросу:', query);
+        
+        const results = this.users.filter(user => {
+            // Не показываем текущего пользователя
+            if (user.id === this.currentUser.id) return false;
+            
+            // Проверяем совпадение по имени
+            return user.username.toLowerCase().includes(query);
+        });
+        
+        console.log('✅ Найдено результатов:', results.length);
+        return results.slice(0, 10);
     }
 
+    // Показать результаты поиска
     showSearchResults(query) {
         const results = this.searchUsers(query);
         const container = document.getElementById('searchResults');
@@ -526,22 +581,56 @@ class CometaChat {
         container.innerHTML = html;
     }
 
-    // ==================== ОБНОВЛЕНИЕ ====================
+    // ==================== ОБНОВЛЕНИЕ В РЕАЛЬНОМ ВРЕМЕНИ ====================
 
+    // Запуск опроса новых сообщений
     startMessagePolling() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+        }
+        
         this.updateInterval = setInterval(async () => {
             if (this.currentUser) {
+                // Сохраняем старые данные для сравнения
+                const oldMessages = JSON.stringify(this.messages);
+                const oldChats = JSON.stringify(this.chats);
+                
                 await this.loadData();
-                if (this.currentChat) {
-                    this.renderMessages(this.currentChat.id);
+                
+                // Проверяем, изменились ли сообщения
+                if (JSON.stringify(this.messages) !== oldMessages) {
+                    console.log('🔄 Обнаружены новые сообщения');
+                    
+                    // Обновляем список чатов
+                    this.loadUserChats();
+                    
+                    // Если открыт чат, обновляем сообщения
+                    if (this.currentChatId) {
+                        this.renderMessages(this.currentChatId);
+                        
+                        // Проверяем, есть ли новые сообщения в открытом чате
+                        const currentChatMessages = this.messages[this.currentChatId] || [];
+                        const lastMessage = currentChatMessages[currentChatMessages.length - 1];
+                        
+                        // Если последнее сообщение не от текущего пользователя, показываем уведомление
+                        if (lastMessage && lastMessage.senderId !== this.currentUser.id) {
+                            this.showNotification(`Новое сообщение от ${lastMessage.senderName}`, 'info');
+                        }
+                    }
                 }
-                this.loadUserChats();
+                
+                // Проверяем, изменились ли чаты
+                if (JSON.stringify(this.chats) !== oldChats) {
+                    console.log('🔄 Обновлен список чатов');
+                    this.loadUserChats();
+                }
             }
-        }, 3000);
+        }, 2000); // Проверяем каждые 2 секунды
     }
 
     // ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
 
+    // Обновление UI
     updateUI() {
         if (this.currentUser) {
             document.getElementById('username').textContent = this.currentUser.username;
@@ -553,15 +642,18 @@ class CometaChat {
         }
     }
 
+    // Скрыть модальное окно авторизации
     hideAuthModal() {
         document.getElementById('authModal').style.display = 'none';
     }
 
+    // Показать уведомление
     showNotification(message, type = 'info') {
+        // Создаем уведомление
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
             <span>${message}</span>
         `;
         
@@ -576,12 +668,29 @@ class CometaChat {
             z-index: 2000;
             animation: slideIn 0.3s;
             box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            cursor: pointer;
         `;
         
         document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
+        
+        // Убираем через 3 секунды
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+        
+        // Добавляем стили для анимации
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
     }
 
+    // Прокрутка вниз
     scrollToBottom() {
         setTimeout(() => {
             const container = document.getElementById('messagesContainer');
@@ -589,12 +698,14 @@ class CometaChat {
         }, 100);
     }
 
+    // Защита от XSS
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
+    // Форматирование даты
     formatDate(date) {
         const today = new Date();
         const yesterday = new Date(today);
@@ -605,6 +716,7 @@ class CometaChat {
         return date.toLocaleDateString('ru-RU');
     }
 
+    // Форматирование времени сообщения
     formatMessageTime(timestamp) {
         if (!timestamp) return '';
         const date = new Date(timestamp);
@@ -616,6 +728,7 @@ class CometaChat {
         return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
     }
 
+    // Форматирование последнего визита
     formatLastSeen(timestamp) {
         if (!timestamp) return 'никогда';
         
@@ -629,6 +742,7 @@ class CometaChat {
         return date.toLocaleDateString('ru-RU');
     }
 
+    // Загрузка темы
     loadTheme() {
         const theme = localStorage.getItem('theme') || 'light';
         if (theme === 'dark') {
@@ -637,9 +751,10 @@ class CometaChat {
         }
     }
 
-    // ==================== ОБРАБОТЧИКИ ====================
+    // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
 
     setupEventListeners() {
+        // Переключение темы
         document.getElementById('themeToggle').addEventListener('click', () => {
             document.body.classList.toggle('dark-theme');
             const isDark = document.body.classList.contains('dark-theme');
@@ -648,6 +763,7 @@ class CometaChat {
                 '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
         });
 
+        // Переключение между вкладками
         document.getElementById('loginTab').addEventListener('click', () => {
             document.getElementById('loginTab').classList.add('active');
             document.getElementById('registerTab').classList.remove('active');
@@ -662,6 +778,7 @@ class CometaChat {
             document.getElementById('loginForm').classList.remove('active');
         });
 
+        // Форма входа
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('loginUsername').value;
@@ -669,6 +786,7 @@ class CometaChat {
             await this.login(username, password);
         });
 
+        // Форма регистрации
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('regUsername').value;
@@ -680,9 +798,15 @@ class CometaChat {
                 return;
             }
 
+            if (password.length < 6) {
+                this.showNotification('Пароль должен быть минимум 6 символов', 'error');
+                return;
+            }
+
             await this.register(username, password);
         });
 
+        // Кнопка нового чата
         document.getElementById('newChatBtn').addEventListener('click', () => {
             document.getElementById('newChatModal').classList.add('show');
             document.getElementById('newChatSearch').value = '';
@@ -690,10 +814,12 @@ class CometaChat {
             document.getElementById('newChatSearch').focus();
         });
 
+        // Поиск пользователей
         document.getElementById('newChatSearch').addEventListener('input', (e) => {
             this.showSearchResults(e.target.value);
         });
 
+        // Отправка сообщения
         document.getElementById('sendBtn').addEventListener('click', () => {
             const input = document.getElementById('messageInput');
             this.sendMessage(input.value);
@@ -705,14 +831,17 @@ class CometaChat {
             }
         });
 
+        // Выход
         document.getElementById('logoutBtn').addEventListener('click', () => {
             this.logout();
         });
 
+        // Меню на мобильных
         document.getElementById('menuToggle').addEventListener('click', () => {
             document.getElementById('sidebar').classList.toggle('show');
         });
 
+        // Закрытие модалок по клику вне
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 e.target.classList.remove('show');
@@ -724,7 +853,7 @@ class CometaChat {
 // ==================== ЗАПУСК ====================
 const chatApp = new CometaChat();
 
+// Глобальная функция для закрытия модалок
 function closeModal(id) {
     document.getElementById(id).classList.remove('show');
 }
-
