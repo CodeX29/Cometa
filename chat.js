@@ -1,8 +1,8 @@
 // ==================== КОНФИГУРАЦИЯ JSONBIN ====================
 // ВАЖНО: ЗАМЕНИТЕ НА СВОИ РЕАЛЬНЫЕ ЗНАЧЕНИЯ!
 const CONFIG = {
-    API_KEY: '$2a$10$gUv5gFLt94xN1CfT/zp2beY3Bhg4D.TG/3s7ecFFuLagUTSFaVOji',     // Вставьте сюда ваш ключ
-    BIN_ID: 'В69a32dabd0ea881f40e277bb',        // Вставьте сюда ваш ID
+    API_KEY: 'ВАШ_API_КЛЮЧ',     // Вставьте сюда ваш ключ
+    BIN_ID: 'ВАШ_BIN_ID',        // Вставьте сюда ваш ID
     BASE_URL: 'https://api.jsonbin.io/v3'
 };
 
