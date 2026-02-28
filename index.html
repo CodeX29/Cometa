@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Cometa - облачный чат</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Левая панель -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="user-info" id="userInfo">
+                    <div class="avatar" id="userAvatar">Г</div>
+                    <div class="user-details">
+                        <div class="username" id="username">Загрузка...</div>
+                        <div class="user-status" id="userStatusDisplay">
+                            <span class="status-dot online"></span>
+                            <span>онлайн</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="new-chat-btn" id="newChatBtn" title="Новый чат">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Поиск пользователей..." id="searchUsers">
+            </div>
+
+            <div class="chats-list" id="chatsList">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Загрузка чатов...
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="settings-btn" id="themeToggle" title="Сменить тему">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="logout-btn" id="logoutBtn" title="Выйти">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Основная область чата -->
+        <main class="chat-area" id="chatArea">
+            <div class="chat-header" id="chatHeader" style="display: none;">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="chat-header-info" id="chatHeaderInfo">
+                    <div class="chat-avatar large" id="currentChatAvatar"></div>
+                    <div>
+                        <div class="current-chat-name" id="currentChatName"></div>
+                        <div class="chat-status" id="currentChatStatus">
+                            <span class="status-dot"></span>
+                            <span>загрузка...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="welcome-message">
+                    <i class="fas fa-comments"></i>
+                    <h2>Добро пожаловать в Cometa!</h2>
+                    <p>Выберите чат или создайте новый</p>
+                </div>
+            </div>
+
+            <div class="message-input-container" id="messageInputContainer" style="display: none;">
+                <div class="input-wrapper">
+                    <input type="text" placeholder="Написать сообщение..." id="messageInput">
+                </div>
+                <button class="send-btn" id="sendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Модальное окно входа/регистрации -->
+    <div class="modal" id="authModal" style="display: flex;">
+        <div class="modal-content auth-modal">
+            <div class="modal-header">
+                <h2>Cometa</h2>
+                <p>Войдите чтобы продолжить</p>
+            </div>
+            <div class="modal-body">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" id="loginTab">Вход</button>
+                    <button class="auth-tab" id="registerTab">Регистрация</button>
+                </div>
+
+                <!-- Форма входа -->
+                <form id="loginForm" class="auth-form active">
+                    <div class="form-group">
+                        <label>Имя пользователя</label>
+                        <input type="text" id="loginUsername" placeholder="Введите логин" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" id="loginPassword" placeholder="Введите пароль" required>
+                    </div>
+                    <button type="submit" class="auth-submit">Войти</button>
+                </form>
+
+                <!-- Форма регистрации -->
+                <form id="registerForm" class="auth-form">
+                    <div class="form-group">
+                        <label>Имя пользователя</label>
+                        <input type="text" id="regUsername" placeholder="Придумайте логин" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" id="regPassword" placeholder="Минимум 6 символов" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label>Подтверждение</label>
+                        <input type="password" id="regConfirmPassword" placeholder="Повторите пароль" required>
+                    </div>
+                    <button type="submit" class="auth-submit">Зарегистрироваться</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно нового чата -->
+    <div class="modal" id="newChatModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Новый чат</h3>
+                <button class="close-modal" onclick="closeModal('newChatModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="newChatSearch" placeholder="Введите имя пользователя...">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="chat.js"></script>
+</body>
+</html>
