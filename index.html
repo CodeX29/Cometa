@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Cometa - Личные сообщения</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -402,12 +402,6 @@
             color: #999;
         }
 
-        .typing-indicator {
-            font-size: 0.8rem;
-            color: #999;
-            margin-left: 5px;
-        }
-
         /* Скрытие элементов до авторизации */
         #sidebar, #chatHeader, #chatInputContainer {
             display: none;
@@ -419,23 +413,6 @@
 
         #chatHeader.authenticated, #chatInputContainer.authenticated {
             display: flex;
-        }
-
-        #chatMessages.no-chat {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            color: #999;
-            text-align: center;
-            padding: 20px;
-        }
-
-        #chatMessages.no-chat i {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            opacity: 0.3;
         }
     </style>
 </head>
@@ -566,14 +543,13 @@
     <script>
         // ⚠️ ЗАМЕНИТЕ НА СВОИ ДАННЫЕ ИЗ FIREBASE CONSOLE ⚠️
         const firebaseConfig = {
-          apiKey: "AIzaSyDl2OUYwGTI0wZzxtcjy0LdbR6oJpCPtk0",
-          authDomain: "cometa-11f1a.firebaseapp.com",
-          databaseURL: "https://cometa-11f1a-default-rtdb.europe-west1.firebasedatabase.app",
-          projectId: "cometa-11f1a",
-          storageBucket: "cometa-11f1a.firebasestorage.app",
-          messagingSenderId: "310146582439",
-          appId: "1:310146582439:web:1dc3be9cbcb47d592bd882",
-          measurementId: "G-VDQ30Y5S2L"
+            apiKey: "AIzaSyDl2OUYwGTI0wZzxtcjy0LdbR6oJpCPtk0", // ← ВАШ
+            authDomain: "cometa-social-5e8a3.firebaseapp.com", // ← ВАШ
+            databaseURL: "https://cometa-social-5e8a3-default-rtdb.firebaseio.com", // ← ВАШ
+            projectId: "cometa-social-5e8a3", // ← ВАШ
+            storageBucket: "cometa-social-5e8a3.appspot.com", // ← ВАШ
+            messagingSenderId: "394826489251", // ← ВАШ
+            appId: "1:394826489251:web:8b8a8f3d3e8f3d3e8f3d3e" // ← ВАШ
         };
 
         // Инициализация Firebase
@@ -584,7 +560,6 @@
         let currentChatId = null;
         let currentChatPartner = null;
         let messagesRef = null;
-        let onlineRef = null;
 
         // Отслеживание состояния авторизации
         auth.onAuthStateChanged((user) => {
@@ -592,17 +567,7 @@
                 currentUser = user;
                 document.getElementById('authContainer').style.display = 'none';
                 document.getElementById('sidebar').classList.add('authenticated');
-                
-                // Проверяем наличие username
-                database.ref('users/' + currentUser.uid + '/username').once('value')
-                    .then((snapshot) => {
-                        if (!snapshot.exists() || !snapshot.val()) {
-                            // Показываем модальное окно для установки username
-                            alert('Пожалуйста, установите ваш @username в настройках профиля');
-                        }
-                        setupUserPresence();
-                        loadUserChats();
-                    });
+                loadUserData();
             } else {
                 currentUser = null;
                 document.getElementById('authContainer').style.display = 'block';
@@ -611,6 +576,24 @@
                 document.getElementById('chatInputContainer').classList.remove('authenticated');
             }
         });
+
+        function loadUserData() {
+            if (!currentUser) return;
+            
+            database.ref('users/' + currentUser.uid).once('value')
+                .then((snapshot) => {
+                    if (!snapshot.exists() || !snapshot.val().username) {
+                        // Пользователь без username — покажем сообщение
+                        alert('⚠️ У вас не установлен @username. Пожалуйста, зарегистрируйтесь заново с указанием уникального имени.');
+                        auth.signOut();
+                        return;
+                    }
+                    loadUserChats();
+                })
+                .catch((error) => {
+                    console.error("Ошибка загрузки данных пользователя:", error);
+                });
+        }
 
         function registerUser() {
             const email = document.getElementById('authEmail').value.trim();
@@ -656,8 +639,7 @@
                                 email: email,
                                 username: username,
                                 displayName: username,
-                                createdAt: firebase.database.ServerValue.TIMESTAMP,
-                                lastSeen: firebase.database.ServerValue.TIMESTAMP
+                                createdAt: Date.now()
                             };
 
                             const updates = {};
@@ -709,26 +691,6 @@
             document.getElementById('authError').style.display = 'none';
         }
 
-        // Система онлайн-статуса
-        function setupUserPresence() {
-            if (!currentUser) return;
-            
-            const userId = currentUser.uid;
-            onlineRef = database.ref('online/' + userId);
-
-            // Устанавливаем онлайн при подключении
-            onlineRef.onDisconnect().remove();
-            onlineRef.set(true);
-
-            // Обновляем lastSeen при выходе
-            window.addEventListener('beforeunload', () => {
-                if (currentUser) {
-                    database.ref('users/' + currentUser.uid + '/lastSeen').set(Date.now());
-                    if (onlineRef) onlineRef.remove();
-                }
-            });
-        }
-
         // Загрузка списка чатов
         function loadUserChats() {
             if (!currentUser) return;
@@ -762,7 +724,7 @@
                     });
                 }, (error) => {
                     console.error("Ошибка загрузки чатов:", error);
-                    chatList.innerHTML = `<div class="alert alert-danger m-3">Ошибка загрузки чатов: ${error.message}</div>`;
+                    chatList.innerHTML = `<div class="alert alert-danger m-3">Ошибка: ${error.message}</div>`;
                 });
         }
 
@@ -774,13 +736,11 @@
 
             // Получаем имя партнера
             const partnerName = chat.partner?.displayName || chat.partner?.username || 'Неизвестный пользователь';
-            const isOnline = chat.partner?.online || false;
             const timeString = formatTime(chat.timestamp);
 
             chatDiv.innerHTML = `
                 <div class="chat-avatar position-relative">
                     ${partnerName.charAt(0).toUpperCase()}
-                    <div class="online-indicator ${isOnline ? 'show' : ''}"></div>
                 </div>
                 <div class="chat-info">
                     <span class="chat-name">${escapeHtml(partnerName)}</span>
@@ -816,7 +776,7 @@
             const partnerName = partner.displayName || partner.username || 'Пользователь';
             document.getElementById('chatName').textContent = partnerName;
             document.getElementById('chatAvatar').textContent = partnerName.charAt(0).toUpperCase();
-            document.getElementById('chatStatus').textContent = partner.online ? 'Онлайн' : 'Был в сети ' + formatLastSeen(partner.lastSeen);
+            document.getElementById('chatStatus').textContent = 'Онлайн';
 
             // Загружаем сообщения
             loadChatMessages(chatId);
@@ -917,7 +877,7 @@
                 senderName: currentUser.displayName || currentUser.email.split('@')[0],
                 recipientId: currentChatPartner.uid,
                 text: text,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
+                timestamp: Date.now()
             };
 
             // Отправляем сообщение
@@ -927,21 +887,17 @@
                     // Обновляем информацию о чате для обоих пользователей
                     const chatInfo = {
                         lastMessage: text,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        timestamp: Date.now(),
                         partner: {
                             uid: currentChatPartner.uid,
                             username: currentChatPartner.username,
-                            displayName: currentChatPartner.displayName,
-                            online: currentChatPartner.online || false,
-                            lastSeen: currentChatPartner.lastSeen || Date.now()
-                        }
+                            displayName: currentChatPartner.displayName
+                        },
+                        unreadCount: 0
                     };
 
                     // Для текущего пользователя
-                    database.ref(`user_chats/${currentUser.uid}/${currentChatId}`).update({
-                        ...chatInfo,
-                        unreadCount: 0
-                    });
+                    database.ref(`user_chats/${currentUser.uid}/${currentChatId}`).update(chatInfo);
 
                     // Для партнера по чату
                     database.ref(`user_chats/${currentChatPartner.uid}/${currentChatId}`).transaction((currentData) => {
@@ -1094,8 +1050,7 @@
                         const partnerData = snapshot.val() || {
                             uid: userId,
                             username: username,
-                            displayName: displayName,
-                            online: false
+                            displayName: displayName
                         };
                         openChat(existingChatId, partnerData);
                     });
@@ -1109,15 +1064,13 @@
             const partnerData = {
                 uid: userId,
                 username: username,
-                displayName: displayName,
-                online: false,
-                lastSeen: Date.now()
+                displayName: displayName
             };
 
             // Информация о чате
             const chatInfo = {
                 lastMessage: 'Чат создан',
-                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                timestamp: Date.now(),
                 partner: partnerData,
                 unreadCount: 0
             };
@@ -1192,27 +1145,7 @@
             return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
         }
 
-        function formatLastSeen(timestamp) {
-            if (!timestamp) return 'давно';
-            
-            const date = new Date(timestamp);
-            const now = new Date();
-            const diffMinutes = Math.floor((now - date) / 60000);
-            
-            if (diffMinutes < 1) return 'только что';
-            if (diffMinutes < 60) return `${diffMinutes} мин назад`;
-            if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)} ч назад`;
-            
-            return formatTime(timestamp);
-        }
-
         function logout() {
-            if (onlineRef) {
-                onlineRef.remove();
-            }
-            if (currentUser) {
-                database.ref('users/' + currentUser.uid + '/lastSeen').set(Date.now());
-            }
             auth.signOut();
         }
 
@@ -1222,11 +1155,6 @@
                 e.preventDefault();
                 showSearchModal();
             }
-        });
-
-        // Автофокус на поле сообщения при открытии чата
-        document.getElementById('messageInput').addEventListener('focus', () => {
-            // Можно добавить индикацию "печатает" в будущем
         });
     </script>
 </body>
