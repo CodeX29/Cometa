@@ -3,141 +3,541 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cometa - Социальная сеть</title>
-    <!-- Bootstrap CSS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Cometa - Личные сообщения</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Встроенные стили -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --message-bg: #f0f0f0;
+            --message-own-bg: #4CAF50;
+            --sidebar-width: 280px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            background: var(--bg-gradient);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            overflow: hidden;
         }
-        .message-container {
-            max-height: 500px;
-            overflow-y: auto;
-            padding: 10px;
+
+        /* Сайдбар (список чатов) */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
             background: white;
-            border-radius: 10px;
-            margin: 10px 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
         }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .sidebar-search {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 0;
+        }
+
+        .chat-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .chat-item:hover {
+            background: #f8f9fa;
+        }
+
+        .chat-item.active {
+            background: #e8eaf6;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .chat-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .chat-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chat-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .chat-last-message {
+            font-size: 0.85rem;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .chat-time {
+            font-size: 0.75rem;
+            color: #999;
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+
+        .chat-unread {
+            background: var(--primary-color);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+
+        .online-indicator {
+            width: 12px;
+            height: 12px;
+            background: #4CAF50;
+            border-radius: 50%;
+            border: 2px solid white;
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            display: none;
+        }
+
+        .online-indicator.show {
+            display: block;
+        }
+
+        /* Основной контент */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .chat-avatar-large {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.8rem;
+            margin-right: 15px;
+        }
+
+        .chat-header-info h3 {
+            margin-bottom: 3px;
+        }
+
+        .chat-header-status {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
         .message {
             margin-bottom: 15px;
-            padding: 12px 15px;
-            border-radius: 15px;
-            max-width: 80%;
+            max-width: 70%;
+            position: relative;
+        }
+
+        .message.own {
+            margin-left: auto;
+        }
+
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 18px;
             position: relative;
             word-wrap: break-word;
         }
-        .message.own {
-            background-color: #4CAF50;
+
+        .message.own .message-content {
+            background: var(--message-own-bg);
             color: white;
-            margin-left: auto;
             border-bottom-right-radius: 5px;
         }
-        .message.other {
-            background-color: #f0f0f0;
+
+        .message.other .message-content {
+            background: var(--message-bg);
             color: #333;
             border-bottom-left-radius: 5px;
         }
+
         .message-time {
-            font-size: 0.75em;
+            font-size: 0.7rem;
             opacity: 0.8;
-            margin-top: 4px;
+            margin-top: 5px;
             text-align: right;
+            color: #666;
         }
-        .message-user {
-            font-weight: bold;
-            margin-bottom: 3px;
-            font-size: 0.9em;
+
+        .message.own .message-time {
+            color: rgba(255,255,255,0.8);
         }
-        #authContainer {
-            margin-top: 50px;
-        }
-        #chatContainer {
-            margin-top: 20px;
-        }
-        .alert {
-            margin-top: 15px;
-        }
-        .card {
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            border: none;
-            border-radius: 15px;
-        }
-        header {
-            color: white;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        #messages {
-            min-height: 300px;
-        }
-        .no-messages {
+
+        .message-info {
             display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .chat-input {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            background: white;
+        }
+
+        .empty-chat {
+            display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100%;
             color: #999;
-            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .empty-chat i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-chat h3 {
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        .empty-chat p {
+            color: #999;
+            max-width: 400px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Мобильная версия */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 100%;
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .chat-messages {
+                padding: 15px 10px;
+            }
+            .message {
+                max-width: 85%;
+            }
+        }
+
+        /* Модальные окна */
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+
+        .modal-header {
+            border-bottom: none;
+            padding: 20px;
+        }
+
+        .modal-title {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .user-search-result {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .user-search-result:hover {
+            background: #f8f9fa;
+        }
+
+        .user-search-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-right: 12px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .typing-indicator {
+            font-size: 0.8rem;
+            color: #999;
+            margin-left: 5px;
+        }
+
+        .message-delivered {
+            font-size: 0.7rem;
+            opacity: 0.6;
+            margin-left: 5px;
+        }
+
+        /* Анимации */
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.4s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.6s;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header class="text-center my-4">
-            <h1 class="display-4">☄️ Cometa</h1>
-            <p class="lead">Социальная сеть нового поколения</p>
-        </header>
+    <!-- Сайдбар: Список чатов -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">☄️ Cometa</div>
+            <div class="d-flex align-items-center">
+                <button class="btn btn-sm btn-outline-primary me-2" onclick="showSearchModal()">
+                    <i class="bi bi-search"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="logout()">
+                    <i class="bi bi-box-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="sidebar-search">
+            <div class="input-group">
+                <input type="text" class="form-control" id="chatSearch" placeholder="Поиск чатов..." oninput="filterChats()">
+                <button class="btn btn-outline-secondary" type="button">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="chat-list" id="chatList">
+            <div class="text-center py-4 text-muted">Загрузка чатов...</div>
+        </div>
+    </div>
 
-        <!-- Форма авторизации -->
-        <div id="authContainer">
-            <div class="card mx-auto" style="max-width: 500px;">
-                <div class="card-body p-4">
-                    <h2 class="card-title text-center mb-4">🚀 Добро пожаловать в Cometa</h2>
+    <!-- Основной контент -->
+    <div class="main-content">
+        <div class="chat-header" id="chatHeader" style="display: none;">
+            <div class="chat-avatar-large" id="chatAvatar">U</div>
+            <div class="chat-header-info">
+                <h3 id="chatName">Выберите чат</h3>
+                <div class="chat-header-status">
+                    <span id="chatStatus">Онлайн</span>
+                    <span class="typing-indicator" id="typingIndicator" style="display: none;">
+                        печатает<span>.</span><span>.</span><span>.</span>
+                    </span>
+                </div>
+            </div>
+            <div class="ms-auto">
+                <button class="btn btn-sm btn-outline-secondary me-2">
+                    <i class="bi bi-info-circle"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="empty-chat">
+                <i class="bi bi-chat-dots"></i>
+                <h3>Добро пожаловать в Cometa</h3>
+                <p>Начните общение, найдя пользователя через поиск или выбрав чат из списка слева.</p>
+                <button class="btn btn-primary mt-3" onclick="showSearchModal()">
+                    <i class="bi bi-search me-2"></i>Найти пользователя
+                </button>
+            </div>
+        </div>
+
+        <div class="chat-input" id="chatInputContainer" style="display: none;">
+            <div class="input-group">
+                <input type="text" class="form-control" id="messageInput" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button class="btn btn-primary" onclick="sendMessage()">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно поиска пользователей -->
+    <div class="modal fade" id="searchModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">🔍 Поиск пользователей</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchUsername" placeholder="@username" oninput="searchUsers()">
+                            <button class="btn btn-outline-primary" type="button" onclick="searchUsers()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Введите @username для поиска</small>
+                    </div>
                     
-                    <div id="authForm">
-                        <div class="mb-3">
-                            <label for="email" class="form-label">📧 Email</label>
-                            <input type="email" class="form-control" id="email" placeholder="user@example.com">
+                    <div id="searchResults">
+                        <div class="text-center py-3 text-muted">
+                            <i class="bi bi-search"></i>
+                            <p class="mt-2">Введите имя пользователя для поиска</p>
                         </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">🔒 Пароль</label>
-                            <input type="password" class="form-control" id="password" placeholder="Минимум 6 символов">
-                        </div>
-                        <div class="mb-4">
-                            <label for="username" class="form-label">👤 Имя пользователя</label>
-                            <input type="text" class="form-control" id="username" placeholder="Ваше имя">
-                        </div>
-                        <button class="btn btn-primary w-100 mb-2 py-2 fw-bold" onclick="registerUser()">Зарегистрироваться</button>
-                        <button class="btn btn-outline-secondary w-100 py-2" onclick="loginUser()">Уже есть аккаунт? Войти</button>
-                        <div id="authError" class="alert alert-danger mt-3" style="display: none;"></div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Чат -->
-        <div id="chatContainer" style="display: none;">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="mb-0">💬 Общий чат</h3>
-                        <button class="btn btn-light btn-sm" onclick="logout()">🚪 Выйти</button>
-                    </div>
-                    <div class="mt-2">
-                        <span id="currentUser" class="badge bg-light text-dark px-3 py-2"></span>
-                    </div>
+    <!-- Модальное окно установки username -->
+    <div class="modal fade" id="usernameModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">👤 Выберите ваш @username</h5>
                 </div>
-                <div class="card-body p-0">
-                    <div id="messages" class="message-container">
-                        <div class="no-messages">Пока нет сообщений. Будьте первым!</div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Ваш уникальный @username</label>
+                        <div class="input-group">
+                            <span class="input-group-text">@</span>
+                            <input type="text" class="form-control" id="newUsername" placeholder="ваше_имя" maxlength="30">
+                        </div>
+                        <small class="text-muted">
+                            • Только буквы, цифры и подчеркивания<br>
+                            • От 3 до 30 символов<br>
+                            • Уникальный для всей сети
+                        </small>
                     </div>
+                    <div id="usernameError" class="alert alert-danger" style="display: none;"></div>
                 </div>
-                <div class="card-footer p-3">
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="messageInput" placeholder="Напишите сообщение..." onkeypress="if(event.key==='Enter') sendMessage()">
-                        <button class="btn btn-primary" onclick="sendMessage()">➤</button>
-                    </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="setUsername()">Сохранить</button>
                 </div>
             </div>
         </div>
@@ -147,8 +547,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    
-    <!-- Основной код приложения -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
         // ⚠️ ЗАМЕНИТЕ НА СВОИ ДАННЫЕ ИЗ FIREBASE CONSOLE ⚠️
         const firebaseConfig = {
@@ -161,240 +561,590 @@
           appId: "1:310146582439:web:1dc3be9cbcb47d592bd882",
           measurementId: "G-VDQ30Y5S2L"
         };
-    
+
         // Инициализация Firebase
-        try {
-            firebase.initializeApp(firebaseConfig);
-            console.log("✅ Firebase инициализирован");
-        } catch (e) {
-            console.error("❌ Ошибка инициализации Firebase:", e);
-            alert("Ошибка настройки Firebase! Проверьте конфигурацию.");
-        }
-    
+        firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const database = firebase.database();
         let currentUser = null;
+        let currentChatId = null;
+        let currentChatPartner = null;
         let messagesRef = null;
-    
-        // 🔑 КРИТИЧЕСКИ ВАЖНО: Принудительная настройка транспорта для обхода блокировок
-        database.INTERNAL.forceWebSockets(); // Используем только WebSocket (надёжнее для реального времени)
-        // Альтернатива, если не работает: 
-        // database.INTERNAL.forceLongPolling(); // Используем long-polling (работает везде, но медленнее)
-    
-        // Мониторинг подключения к базе данных
+        let onlineRef = null;
+
+        // Принудительное использование WebSocket
+        try {
+            database.INTERNAL.forceWebSockets();
+        } catch (e) {
+            console.warn("WebSocket недоступен, используем обычное подключение");
+        }
+
+        // Мониторинг подключения
         database.ref('.info/connected').on('value', (snapshot) => {
-            if (snapshot.val() === false) {
-                console.warn("⚠️ Нет подключения к базе данных Firebase");
-                showConnectionStatus("Нет подключения к серверу", "danger");
+            if (snapshot.val()) {
+                console.log("✅ Подключено к Firebase");
             } else {
-                console.log("✅ Подключение к базе данных установлено");
-                hideConnectionStatus();
+                console.warn("⚠️ Нет подключения к базе данных");
             }
         });
-    
+
         // Отслеживание состояния авторизации
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUser = user;
-                // Получаем имя пользователя
-                database.ref('users/' + user.uid + '/username').once('value')
-                    .then((snapshot) => {
-                        const username = snapshot.val() || user.email.split('@')[0];
-                        document.getElementById('currentUser').textContent = `@${username}`;
-                    });
-                
-                document.getElementById('authContainer').style.display = 'none';
-                document.getElementById('chatContainer').style.display = 'block';
-                loadMessages();
+                setupUserPresence();
+                checkUsernameSetup();
+                loadUserChats();
             } else {
-                // Отписываемся от обновлений при выходе
-                if (messagesRef) {
-                    messagesRef.off('value');
-                    messagesRef = null;
-                }
-                document.getElementById('authContainer').style.display = 'block';
-                document.getElementById('chatContainer').style.display = 'none';
                 currentUser = null;
+                document.getElementById('sidebar').style.display = 'none';
+                document.getElementById('chatHeader').style.display = 'none';
+                document.getElementById('chatInputContainer').style.display = 'none';
+                showAuthPage();
             }
         });
-    
+
+        function showAuthPage() {
+            document.body.innerHTML = `
+                <div class="container" style="height: 100vh; display: flex; align-items: center; justify-content: center;">
+                    <div class="card" style="width: 400px;">
+                        <div class="card-body p-4">
+                            <h2 class="card-title text-center mb-4">🚀 Cometa</h2>
+                            <div class="mb-3">
+                                <label class="form-label">📧 Email</label>
+                                <input type="email" class="form-control" id="authEmail" placeholder="user@example.com">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">🔒 Пароль</label>
+                                <input type="password" class="form-control" id="authPassword" placeholder="Минимум 6 символов">
+                            </div>
+                            <button class="btn btn-primary w-100 mb-2" onclick="registerUser()">Зарегистрироваться</button>
+                            <button class="btn btn-outline-secondary w-100" onclick="loginUser()">Войти</button>
+                            <div id="authError" class="alert alert-danger mt-3" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         function registerUser() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value.trim();
-            const username = document.getElementById('username').value.trim();
-    
-            if (!email || !password || !username) {
-                showError('Пожалуйста, заполните все поля');
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value.trim();
+
+            if (!email || !password) {
+                showError('Заполните все поля');
                 return;
             }
-            
-            if (password.length < 6) {
-                showError('Пароль должен быть не менее 6 символов');
-                return;
-            }
-    
-            document.getElementById('authError').style.display = 'none';
-            
+
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    const user = userCredential.user;
-                    return database.ref('users/' + user.uid).set({
-                        username: username,
-                        email: email,
-                        createdAt: firebase.database.ServerValue.TIMESTAMP
-                    });
-                })
-                .then(() => {
-                    hideError();
-                    document.getElementById('email').value = '';
-                    document.getElementById('password').value = '';
-                    document.getElementById('username').value = '';
+                    // Пользователь создан, теперь нужно установить username
+                    currentUser = userCredential.user;
+                    showUsernameModal();
                 })
                 .catch((error) => {
                     showError(error.message);
                 });
         }
-    
+
         function loginUser() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value.trim();
-    
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value.trim();
+
             if (!email || !password) {
-                showError('Пожалуйста, заполните email и пароль');
+                showError('Заполните все поля');
                 return;
             }
-    
-            document.getElementById('authError').style.display = 'none';
-            
+
             auth.signInWithEmailAndPassword(email, password)
                 .catch((error) => {
                     showError(error.message);
                 });
         }
-    
-        function logout() {
-            // Отписываемся от обновлений
-            if (messagesRef) {
-                messagesRef.off('value');
-                messagesRef = null;
+
+        function showError(message) {
+            const errorDiv = document.getElementById('authError');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => errorDiv.style.display = 'none', 5000);
             }
-            auth.signOut();
         }
-    
-        function sendMessage() {
-            if (!currentUser) {
-                showError('Вы не авторизованы!');
-                return;
-            }
-            
-            const messageInput = document.getElementById('messageInput');
-            const message = messageInput.value.trim();
-    
-            if (!message) return;
-            if (message.length > 1000) {
-                showError('Сообщение слишком длинное (макс. 1000 символов)');
-                return;
-            }
-    
-            const userId = currentUser.uid;
-            const usernameRef = database.ref('users/' + userId + '/username');
-    
-            usernameRef.once('value').then((snapshot) => {
-                const username = snapshot.val() || currentUser.email.split('@')[0];
-                
-                // ⚡ КРИТИЧЕСКИ ВАЖНО: Используем транзакцию для надёжной записи
-                database.ref('messages').push().set({
-                    userId: userId,
-                    username: username,
-                    message: message,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                }, (error) => {
-                    if (error) {
-                        console.error("Ошибка отправки:", error);
-                        showError('Не удалось отправить сообщение. Попробуйте ещё раз.');
+
+        // Проверка установки username
+        function checkUsernameSetup() {
+            database.ref('users/' + currentUser.uid + '/username').once('value')
+                .then((snapshot) => {
+                    if (!snapshot.exists() || !snapshot.val()) {
+                        showUsernameModal();
                     } else {
-                        console.log("✅ Сообщение отправлено");
+                        document.getElementById('sidebar').style.display = 'block';
                     }
                 });
-    
-                messageInput.value = '';
-                messageInput.focus();
-            }).catch((error) => {
-                console.error("Ошибка получения имени:", error);
-                showError('Не удалось отправить сообщение');
-            });
         }
-    
-        // 🔥 ГЛАВНОЕ ИСПРАВЛЕНИЕ: Используем ЕДИНУЮ подписку через 'value'
-        function loadMessages() {
-            const messagesDiv = document.getElementById('messages');
-            messagesDiv.innerHTML = '<div class="no-messages">Загрузка сообщений...</div>';
-            
-            // Отписываемся от предыдущих подписок
+
+        function showUsernameModal() {
+            const modal = new bootstrap.Modal(document.getElementById('usernameModal'));
+            modal.show();
+        }
+
+        function setUsername() {
+            const usernameInput = document.getElementById('newUsername');
+            const username = usernameInput.value.trim().toLowerCase();
+
+            if (!username) {
+                showErrorUsername('Введите имя пользователя');
+                return;
+            }
+
+            if (!/^[a-z0-9_]{3,30}$/.test(username)) {
+                showErrorUsername('Username может содержать только буквы, цифры и подчеркивания (3-30 символов)');
+                return;
+            }
+
+            // Проверяем уникальность
+            database.ref('usernames/' + username).once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        showErrorUsername('Это имя уже занято, выберите другое');
+                        return;
+                    }
+
+                    // Сохраняем данные пользователя
+                    const userData = {
+                        uid: currentUser.uid,
+                        email: currentUser.email,
+                        username: username,
+                        displayName: username,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP,
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
+                    };
+
+                    const updates = {};
+                    updates['users/' + currentUser.uid] = userData;
+                    updates['usernames/' + username] = currentUser.uid;
+
+                    database.ref().update(updates)
+                        .then(() => {
+                            document.getElementById('usernameModal').querySelector('.btn-close')?.click();
+                            document.getElementById('sidebar').style.display = 'block';
+                            hideErrorUsername();
+                        })
+                        .catch((error) => {
+                            showErrorUsername('Ошибка: ' + error.message);
+                        });
+                });
+        }
+
+        function showErrorUsername(message) {
+            const errorDiv = document.getElementById('usernameError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideErrorUsername() {
+            document.getElementById('usernameError').style.display = 'none';
+        }
+
+        // Загрузка списка чатов
+        function loadUserChats() {
+            const chatList = document.getElementById('chatList');
+            chatList.innerHTML = '<div class="text-center py-4 text-muted">Загрузка чатов...</div>';
+
+            database.ref('user_chats/' + currentUser.uid)
+                .orderByChild('timestamp')
+                .on('value', (snapshot) => {
+                    chatList.innerHTML = '';
+                    
+                    if (!snapshot.exists()) {
+                        chatList.innerHTML = '<div class="text-center py-4 text-muted">У вас пока нет чатов</div>';
+                        return;
+                    }
+
+                    const chats = [];
+                    snapshot.forEach((childSnapshot) => {
+                        chats.push({
+                            chatId: childSnapshot.key,
+                            ...childSnapshot.val()
+                        });
+                    });
+
+                    // Сортируем по времени (новые наверху)
+                    chats.sort((a, b) => b.timestamp - a.timestamp);
+
+                    if (chats.length === 0) {
+                        chatList.innerHTML = '<div class="text-center py-4 text-muted">У вас пока нет чатов</div>';
+                        return;
+                    }
+
+                    chats.forEach((chat) => {
+                        addChatToSidebar(chat);
+                    });
+                });
+        }
+
+        function addChatToSidebar(chat) {
+            const chatList = document.getElementById('chatList');
+            const chatDiv = document.createElement('div');
+            chatDiv.className = 'chat-item' + (chat.chatId === currentChatId ? ' active' : '');
+            chatDiv.onclick = () => openChat(chat.chatId, chat.partner);
+
+            // Получаем имя партнера
+            const partnerName = chat.partner?.displayName || chat.partner?.username || 'Неизвестный пользователь';
+
+            chatDiv.innerHTML = `
+                <div class="chat-avatar position-relative">
+                    ${partnerName.charAt(0).toUpperCase()}
+                    <div class="online-indicator ${chat.partner?.online ? 'show' : ''}"></div>
+                </div>
+                <div class="chat-info">
+                    <span class="chat-name">${escapeHtml(partnerName)}</span>
+                    <span class="chat-last-message">${escapeHtml(chat.lastMessage || 'Начните диалог...')}</span>
+                </div>
+                <div class="d-flex flex-column align-items-end">
+                    <span class="chat-time">${formatTime(chat.timestamp)}</span>
+                    ${chat.unreadCount > 0 ? `<span class="chat-unread">${chat.unreadCount}</span>` : ''}
+                </div>
+            `;
+
+            chatList.appendChild(chatDiv);
+        }
+
+        function openChat(chatId, partner) {
+            currentChatId = chatId;
+            currentChatPartner = partner;
+
+            // Обновляем активный чат в сайдбаре
+            document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            // Показываем чат
+            document.getElementById('chatHeader').style.display = 'flex';
+            document.getElementById('chatInputContainer').style.display = 'block';
+
+            // Обновляем информацию о чате
+            const partnerName = partner?.displayName || partner?.username || 'Пользователь';
+            document.getElementById('chatName').textContent = partnerName;
+            document.getElementById('chatAvatar').textContent = partnerName.charAt(0).toUpperCase();
+            document.getElementById('chatStatus').textContent = partner?.online ? 'Онлайн' : 'Офлайн';
+
+            // Загружаем сообщения
+            loadChatMessages(chatId);
+
+            // Сбрасываем счетчик непрочитанных
+            if (partner?.uid) {
+                database.ref(`user_chats/${currentUser.uid}/${chatId}/unreadCount`).set(0);
+            }
+        }
+
+        function loadChatMessages(chatId) {
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.innerHTML = '<div class="text-center py-4 text-muted">Загрузка сообщений...</div>';
+
             if (messagesRef) {
                 messagesRef.off('value');
             }
-            
-            // Подписываемся ТОЛЬКО на 'value' — это гарантирует полную синхронизацию
-            messagesRef = database.ref('messages').orderByChild('timestamp').limitToLast(50);
-            
+
+            messagesRef = database.ref(`chats/${chatId}/messages`)
+                .orderByChild('timestamp')
+                .limitToLast(50);
+
             messagesRef.on('value', (snapshot) => {
-                console.log(`📡 Получено обновление: ${snapshot.numChildren()} сообщений`);
                 messagesDiv.innerHTML = '';
-                
-                if (snapshot.exists() && snapshot.numChildren() > 0) {
-                    // Сортируем сообщения по времени (на случай если порядок нарушен)
-                    const messages = [];
-                    snapshot.forEach((childSnapshot) => {
-                        messages.push(childSnapshot.val());
-                    });
-                    
-                    // Сортировка по timestamp
-                    messages.sort((a, b) => a.timestamp - b.timestamp);
-                    
-                    // Отображаем сообщения
-                    messages.forEach((messageData) => {
-                        addMessageToDOM(messageData);
-                    });
-                    
-                    // Автопрокрутка вниз
-                    setTimeout(() => {
-                        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                    }, 100);
-                } else {
-                    messagesDiv.innerHTML = '<div class="no-messages">Пока нет сообщений. Будьте первым!</div>';
+
+                if (!snapshot.exists()) {
+                    messagesDiv.innerHTML = `
+                        <div class="empty-chat">
+                            <i class="bi bi-chat-dots"></i>
+                            <h3>Начните диалог</h3>
+                            <p>Напишите первое сообщение этому пользователю</p>
+                        </div>
+                    `;
+                    return;
                 }
-            }, (error) => {
-                console.error("❌ Ошибка загрузки сообщений:", error);
-                messagesDiv.innerHTML = `<div class="alert alert-danger p-3">Ошибка: ${error.message}</div>`;
-                showConnectionStatus("Ошибка подключения к чату", "danger");
+
+                const messages = [];
+                snapshot.forEach((childSnapshot) => {
+                    messages.push(childSnapshot.val());
+                });
+
+                messages.sort((a, b) => a.timestamp - b.timestamp);
+
+                messages.forEach((message) => {
+                    addMessageToChat(message);
+                });
+
+                // Прокрутка вниз
+                setTimeout(() => {
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }, 100);
             });
         }
-    
-        function addMessageToDOM(messageData) {
-            const messagesDiv = document.getElementById('messages');
+
+        function addMessageToChat(message) {
+            const messagesDiv = document.getElementById('chatMessages');
+            
             const messageDiv = document.createElement('div');
-            messageDiv.className = 'message ' + (messageData.userId === currentUser?.uid ? 'own' : 'other');
-    
-            const date = new Date(messageData.timestamp);
+            messageDiv.className = 'message ' + (message.senderId === currentUser.uid ? 'own' : 'other');
+
+            const date = new Date(message.timestamp);
             const timeString = date.toLocaleTimeString('ru-RU', { 
                 hour: '2-digit', 
                 minute: '2-digit',
                 hour12: false
             });
-    
-            const safeMessage = escapeHtml(messageData.message);
-            const safeUsername = escapeHtml(messageData.username);
-    
+
+            const senderName = message.senderId === currentUser.uid ? 'Вы' : (message.senderName || 'Пользователь');
+
             messageDiv.innerHTML = `
-                <div class="message-user">${safeUsername}</div>
-                <div class="message-content">${safeMessage}</div>
-                <div class="message-time">${timeString}</div>
+                <div class="message-info">
+                    <span class="message-sender">${escapeHtml(senderName)}</span>
+                    <span class="message-time">${timeString}</span>
+                </div>
+                <div class="message-content">${escapeHtml(message.text)}</div>
             `;
-    
+
             messagesDiv.appendChild(messageDiv);
         }
-    
+
+        function sendMessage() {
+            if (!currentChatId || !currentChatPartner) {
+                return;
+            }
+
+            const messageInput = document.getElementById('messageInput');
+            const text = messageInput.value.trim();
+
+            if (!text) return;
+
+            const messageData = {
+                senderId: currentUser.uid,
+                senderName: currentUser.displayName || currentUser.email.split('@')[0],
+                recipientId: currentChatPartner.uid,
+                text: text,
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                delivered: false
+            };
+
+            // Отправляем сообщение
+            const newMessageRef = database.ref(`chats/${currentChatId}/messages`).push();
+            newMessageRef.set(messageData)
+                .then(() => {
+                    // Обновляем информацию о чате для обоих пользователей
+                    const chatInfo = {
+                        lastMessage: text,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        partner: {
+                            uid: currentChatPartner.uid,
+                            username: currentChatPartner.username,
+                            displayName: currentChatPartner.displayName,
+                            online: currentChatPartner.online || false
+                        }
+                    };
+
+                    // Для текущего пользователя
+                    database.ref(`user_chats/${currentUser.uid}/${currentChatId}`).update({
+                        ...chatInfo,
+                        unreadCount: 0
+                    });
+
+                    // Для партнера по чату
+                    database.ref(`user_chats/${currentChatPartner.uid}/${currentChatId}`).update({
+                        ...chatInfo,
+                        unreadCount: (currentChatPartner.uid !== currentUser.uid) ? 
+                            firebase.database.ServerValue.increment(1) : 0
+                    });
+
+                    messageInput.value = '';
+                    messageInput.focus();
+                })
+                .catch((error) => {
+                    console.error("Ошибка отправки:", error);
+                });
+        }
+
+        // Поиск пользователей
+        function showSearchModal() {
+            const modal = new bootstrap.Modal(document.getElementById('searchModal'));
+            modal.show();
+            document.getElementById('searchUsername').focus();
+        }
+
+        function searchUsers() {
+            const searchInput = document.getElementById('searchUsername');
+            const username = searchInput.value.trim().toLowerCase().replace('@', '');
+
+            const resultsDiv = document.getElementById('searchResults');
+
+            if (!username) {
+                resultsDiv.innerHTML = `
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-search"></i>
+                        <p class="mt-2">Введите имя пользователя для поиска</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (username.length < 3) {
+                resultsDiv.innerHTML = '<div class="alert alert-warning">Введите минимум 3 символа</div>';
+                return;
+            }
+
+            // Ищем username
+            database.ref('usernames/' + username).once('value')
+                .then((snapshot) => {
+                    if (!snapshot.exists()) {
+                        resultsDiv.innerHTML = `
+                            <div class="no-results">
+                                <i class="bi bi-emoji-frown"></i>
+                                <p class="mt-2">Пользователь @${username} не найден</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    const userId = snapshot.val();
+                    
+                    // Получаем данные пользователя
+                    database.ref('users/' + userId).once('value')
+                        .then((userSnapshot) => {
+                            if (!userSnapshot.exists()) {
+                                resultsDiv.innerHTML = '<div class="alert alert-danger">Ошибка загрузки данных пользователя</div>';
+                                return;
+                            }
+
+                            const userData = userSnapshot.val();
+                            
+                            // Проверяем, не является ли это текущий пользователь
+                            if (userId === currentUser.uid) {
+                                resultsDiv.innerHTML = '<div class="alert alert-info">Это ваш аккаунт!</div>';
+                                return;
+                            }
+
+                            // Проверяем, есть ли уже чат с этим пользователем
+                            database.ref(`user_chats/${currentUser.uid}`)
+                                .orderByChild('partner/uid')
+                                .equalTo(userId)
+                                .once('value')
+                                .then((chatsSnapshot) => {
+                                    let existingChatId = null;
+                                    
+                                    if (chatsSnapshot.exists()) {
+                                        chatsSnapshot.forEach((chat) => {
+                                            existingChatId = chat.key;
+                                        });
+                                    }
+
+                                    resultsDiv.innerHTML = `
+                                        <div class="user-search-result" onclick="startChatWithUser('${userId}', '${escapeHtml(userData.username)}', '${escapeHtml(userData.displayName)}', '${existingChatId}')">
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-search-avatar">
+                                                    ${userData.displayName.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <div class="fw-bold">${escapeHtml(userData.displayName)}</div>
+                                                    <div class="text-muted">@${escapeHtml(userData.username)}</div>
+                                                </div>
+                                                ${existingChatId ? '<span class="badge bg-primary">Открыть чат</span>' : '<button class="btn btn-sm btn-primary">Написать</button>'}
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                        });
+                })
+                .catch((error) => {
+                    console.error("Ошибка поиска:", error);
+                    resultsDiv.innerHTML = '<div class="alert alert-danger">Ошибка поиска пользователя</div>';
+                });
+        }
+
+        function startChatWithUser(userId, username, displayName, existingChatId) {
+            // Закрываем модальное окно
+            document.getElementById('searchModal').querySelector('.btn-close')?.click();
+
+            if (existingChatId) {
+                // Открываем существующий чат
+                database.ref(`user_chats/${currentUser.uid}/${existingChatId}/partner`).once('value')
+                    .then((snapshot) => {
+                        openChat(existingChatId, snapshot.val());
+                    });
+                return;
+            }
+
+            // Создаем новый чат
+            const chatId = database.ref('chats').push().key;
+            
+            // Данные партнера
+            const partnerData = {
+                uid: userId,
+                username: username,
+                displayName: displayName,
+                online: false // Будет обновлено позже
+            };
+
+            // Информация о чате
+            const chatInfo = {
+                lastMessage: 'Чат создан',
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                partner: partnerData,
+                unreadCount: 0
+            };
+
+            // Создаем чат для обоих пользователей
+            const updates = {};
+            updates[`chats/${chatId}/participants/${currentUser.uid}`] = true;
+            updates[`chats/${chatId}/participants/${userId}`] = true;
+            updates[`user_chats/${currentUser.uid}/${chatId}`] = chatInfo;
+            updates[`user_chats/${userId}/${chatId}`] = {
+                ...chatInfo,
+                unreadCount: 0
+            };
+
+            database.ref().update(updates)
+                .then(() => {
+                    openChat(chatId, partnerData);
+                })
+                .catch((error) => {
+                    console.error("Ошибка создания чата:", error);
+                    alert('Не удалось создать чат. Попробуйте еще раз.');
+                });
+        }
+
+        // Система онлайн-статуса
+        function setupUserPresence() {
+            const userId = currentUser.uid;
+            onlineRef = database.ref('online/' + userId);
+
+            // Устанавливаем онлайн при подключении
+            onlineRef.onDisconnect().remove();
+            onlineRef.set(true);
+
+            // Обновляем lastSeen при выходе
+            window.addEventListener('beforeunload', () => {
+                database.ref('users/' + userId + '/lastSeen').set(Date.now());
+                onlineRef.remove();
+            });
+        }
+
+        // Фильтрация чатов
+        function filterChats() {
+            const searchTerm = document.getElementById('chatSearch').value.toLowerCase();
+            const chatItems = document.querySelectorAll('.chat-item');
+
+            chatItems.forEach(item => {
+                const chatName = item.querySelector('.chat-name').textContent.toLowerCase();
+                const chatLastMessage = item.querySelector('.chat-last-message').textContent.toLowerCase();
+                
+                if (chatName.includes(searchTerm) || chatLastMessage.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // Вспомогательные функции
         function escapeHtml(unsafe) {
             if (typeof unsafe !== 'string') return '';
             return unsafe
@@ -404,61 +1154,48 @@
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
         }
-    
-        function showError(message) {
-            const errorDiv = document.getElementById('authError');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                if (errorDiv.textContent === message) {
-                    hideError();
-                }
-            }, 5000);
-        }
-    
-        function hideError() {
-            document.getElementById('authError').style.display = 'none';
-        }
-    
-        // Индикатор подключения
-        function showConnectionStatus(message, type = "warning") {
-            let statusDiv = document.getElementById('connectionStatus');
-            if (!statusDiv) {
-                statusDiv = document.createElement('div');
-                statusDiv.id = 'connectionStatus';
-                statusDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed bottom-0 start-50 translate-middle-x m-3`;
-                statusDiv.style.zIndex = '1000';
-                statusDiv.style.maxWidth = '300px';
-                document.body.appendChild(statusDiv);
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+            
+            const date = new Date(timestamp);
+            const now = new Date();
+            
+            // Сегодня
+            if (date.toDateString() === now.toDateString()) {
+                return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', hour12: false });
             }
-            statusDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed bottom-0 start-50 translate-middle-x m-3`;
-            statusDiv.innerHTML = `${message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-        }
-    
-        function hideConnectionStatus() {
-            const statusDiv = document.getElementById('connectionStatus');
-            if (statusDiv) {
-                statusDiv.remove();
+            
+            // Вчера
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (date.toDateString() === yesterday.toDateString()) {
+                return 'Вчера';
             }
+            
+            // Другие даты
+            return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
         }
-    
+
+        function logout() {
+            if (onlineRef) {
+                onlineRef.remove();
+            }
+            database.ref('users/' + currentUser.uid + '/lastSeen').set(Date.now());
+            auth.signOut();
+        }
+
         // Горячие клавиши
-        document.getElementById('messageInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
-                sendMessage();
+                showSearchModal();
             }
         });
-    
-        // Автофокус на поле ввода при открытии чата
-        const observer = new MutationObserver(() => {
-            if (document.getElementById('chatContainer').style.display !== 'none') {
-                document.getElementById('messageInput').focus();
-            }
-        });
-        observer.observe(document.getElementById('chatContainer'), {
-            attributes: true,
-            attributeFilter: ['style']
+
+        // Автофокус на поле сообщения
+        document.getElementById('messageInput')?.addEventListener('focus', () => {
+            // Можно добавить индикацию "печатает"
         });
     </script>
 </body>
